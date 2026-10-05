@@ -8,7 +8,47 @@
 #include <chrono>
 #include <thread>
 #include "TrafficObject.h"
-#include "MessageQueue.h"
+
+
+
+// FP.3 Define a class „MessageQueue“ which has the public methods send and receive. 
+// Send should take an rvalue reference of type TrafficLightPhase whereas receive should return this type. 
+// Also, the class should define an std::dequeue called _queue, which stores objects of type TrafficLightPhase. 
+// Also, there should be an std::condition_variable as well as an std::mutex as private members. 
+
+template <class T>
+class MessageQueue
+{
+public:
+    void send(T &&msg);
+    T receive();
+
+private:
+    std::deque<T> _queue;
+    std::condition_variable _condition;
+    std::mutex _mutex;
+    
+};
+
+
+/* Implementation of class "MessageQueue" */
+
+template <class T>
+void MessageQueue<T>::send(T &&msg) {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _queue.push_back(std::move(msg));
+        _condition.notify_one();
+}
+
+template <class T>
+T MessageQueue<T>::receive() {
+        std::unique_lock<std::mutex> lock(_mutex);
+        _condition.wait(lock, [this] { return !_queue.empty(); });
+        T msg = std::move(_queue.front());
+        _queue.pop_front();
+        return msg;
+}   
+
 
 // forward declarations to avoid include cycle
 class Vehicle;
